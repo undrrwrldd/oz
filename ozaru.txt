@@ -1,0 +1,206 @@
+print("STATS")
+print("Garriva v1.0")
+
+local hasQuest = false
+local playerDisponible = true
+local Player = game.Players.LocalPlayer
+local Events = game.ReplicatedStorage.Package.Events
+local pd = game.ReplicatedStorage.Datas[Player.UserId] -- Variable de defensa del jugador
+
+-- Tablas de NPCs según el mundo
+local npcsTierra = {
+    {name = "Oozaru", requiredDefense = 150000000, questGiver = "Kid Nohag"},
+
+}
+
+local npcsVillanos = {
+    {name = "Vekuta (SSJBUI)", requiredDefense = 10000000000, questGiver = "Vekuta (SSJBUI)"},
+    {name = "Wukong Rose", requiredDefense = 7500000000, questGiver = "Wukong Rose"},
+    {name = "Vekuta (LBSSJ4)", requiredDefense = 3000000000, questGiver = "Vekuta (LBSSJ4)"},
+    {name = "Wukong (LBSSJ4)", requiredDefense = 3000000000, questGiver = "Wukong (LBSSJ4)"},
+    {name = "Vegetable (LBSSJ4)", requiredDefense = 1700000000, questGiver = "Vegetable (LBSSJ4)"},
+    {name = "Vis (20%)", requiredDefense = 1000000000, questGiver = "Vis (20%)"},
+    {name = "Vills (50%)", requiredDefense = 700000000, questGiver = "Vills (50%)"},
+    {name = "Wukong (Omen)", requiredDefense = 300000000, questGiver = "Wukong (Omen)"},
+    {name = "Vegetable (GoD in-training)", requiredDefense = 200000000, questGiver = "Vegetable (GoD in-training)"}
+}
+
+wait(2)
+
+-- Función de transformación
+local function manageTransformation()
+    local equipskill = Events.equipskill
+    local defense = pd.Defense.Value
+
+    if defense >= 138000000 then
+        if Player.Status.Transformation.Value ~= "Astral Instinct" then
+            print("Transformando a Astral Instinct")
+            Events.ta:InvokeServer()
+            wait(5)
+            equipskill:InvokeServer("Astral Instinct")
+            wait(1)
+            Events.ta:InvokeServer()
+        end
+    elseif defense == 410000 then
+        if Player.Status.Transformation.Value ~= "SSJG" then
+            print("Transformando a SSJG")
+            Events.ta:InvokeServer()
+            wait(5)
+            equipskill:InvokeServer("SSJG")
+            wait(1)
+            Events.ta:InvokeServer()
+        end
+    elseif defense >= 8000000 then
+        if Player.Status.Transformation.Value ~= "Godly SSJ2" then
+            print("Transformando a Godly SSJ2")
+            Events.ta:InvokeServer()
+            wait(5)
+            equipskill:InvokeServer("Godly SSJ2")
+            wait(1)
+            Events.ta:InvokeServer()
+        end
+    else
+        print("Los valores de Defense no son adecuados para ninguna transformación.")
+    end
+end
+
+local function getCurrentNPCs()
+    local klirin = workspace.Others.NPCs:FindFirstChild("Klirin")
+    if klirin then
+        return npcsTierra
+    else
+        return npcsVillanos
+    end
+end
+
+local function checkPlayerState()
+    while true do
+        wait(1)
+        local humanoid = Player.Character and Player.Character:FindFirstChild("Humanoid")
+        playerDisponible = humanoid and humanoid.Health > 0
+    end
+end
+coroutine.wrap(checkPlayerState)()
+
+-- Función de aceptación de misión
+local function acceptQuest(npcInfo)
+    if playerDisponible then
+        -- Buscamos el NPC más cercano con el nombre especificado
+        local closestNPC = nil
+        local closestDistance = math.huge  -- Usamos una gran distancia inicial
+        
+        for _, npc in pairs(workspace.Others.NPCs:GetChildren()) do
+            if npc.Name == npcInfo.questGiver and npc:FindFirstChild("HumanoidRootPart") then
+                local distance = (Player.Character.HumanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude
+                if distance < closestDistance then
+                    closestNPC = npc
+                    closestDistance = distance
+                end
+            end
+        end
+        
+        -- Si encontramos el NPC más cercano y está dentro de un rango razonable
+        if closestNPC and closestDistance > 5 then
+            -- Teletransporta al jugador y acepta la misión
+            Player.Character.HumanoidRootPart.CFrame = closestNPC.HumanoidRootPart.CFrame
+            wait(2)
+            Events.Qaction:InvokeServer(closestNPC)
+            hasQuest = true
+            print("Misión aceptada de", npcInfo.name)
+            wait(3)  -- Espera 3 segundos después de aceptar la misión
+            return true
+        else
+            print("Jugador ya está cerca del NPC o NPC no encontrado.")
+        end
+    else
+        print("El personaje está muerto, no se puede aceptar la misión.")
+    end
+    return false
+end
+
+-- Función para atacar al NPC
+local function attackNPC(npcName)
+    coroutine.wrap(function()
+        while hasQuest do
+            local npc = workspace.Living:FindFirstChild(npcName)
+            if npc and npc:FindFirstChild("HumanoidRootPart") then
+                Player.Character.HumanoidRootPart.CFrame = npc.HumanoidRootPart.CFrame
+            end
+            wait(0.1) -- Teletransportarse cada 0.1 segundos
+        end
+    end)()
+
+    while hasQuest do
+        local npc = workspace.Living:FindFirstChild(npcName)
+        
+        -- Si el NPC no se encuentra o ya no tiene su HumanoidRootPart, detiene el bucle de ataque
+        if not npc or not npc:FindFirstChild("HumanoidRootPart") then
+            print("NPC no encontrado o misión terminada.")
+            hasQuest = false
+            break
+        end
+
+        -- Verifica si el NPC tiene un Humanoid y su salud es mayor a cero
+        local npcHumanoid = npc:FindFirstChild("Humanoid")
+        if not npcHumanoid or npcHumanoid.Health <= 0 then
+            print("NPC derrotado, deteniendo ataque.")
+            hasQuest = false
+            break
+        end
+
+        -- Ejecuta la secuencia de ataques
+        local args = { [1] = "Blacknwhite27" }
+        game:GetService("ReplicatedStorage").Package.Events.block:InvokeServer(unpack(args))   
+
+
+        local args = { [1] = "Blacknwhite27" }
+        game:GetService("ReplicatedStorage").Package.Events.cha:InvokeServer(unpack(args))     
+
+        Events.p:FireServer("Blacknwhite27", 1)
+        Events.mel:InvokeServer("Wolf Fang Fist", "Blacknwhite27")
+        wait(0.1)
+        Events.mel:InvokeServer("Mach Kick", "Blacknwhite27")
+        wait(0.1)
+        Events.mel:InvokeServer("High Power Rush", "Blacknwhite27")
+        wait(0.1)
+        Events.mel:InvokeServer("Meteor Crash", "Blacknwhite27")
+        wait(0.1)
+        Events.mel:InvokeServer("Spirit Barrage", "Blacknwhite27")
+        wait(0.1)
+        Events.mel:InvokeServer("Meteor Strike", "Blacknwhite27")
+        wait(0.1)
+        Events.mel:InvokeServer("Meteor Crash", "Blacknwhite27")
+        wait(0.1)
+    end
+end
+
+
+local function tryToGetQuest()
+    local currentIndex = 1 -- Empezamos con el primer NPC en la lista
+    while true do
+        wait(1)
+        local npcs = getCurrentNPCs()
+        local npcInfo = npcs[currentIndex]
+
+        -- Si tenemos los requisitos de defensa para el NPC actual
+        if pd.Defense.Value >= npcInfo.requiredDefense then
+            -- Si no tenemos una misión activa, intentamos aceptarla
+            if not hasQuest and playerDisponible then
+                if acceptQuest(npcInfo) then
+                    attackNPC(npcInfo.name)
+                    -- Esperamos 3 segundos antes de pasar al siguiente NPC
+                    wait(3)
+                end
+            end
+        else
+            -- Si no tenemos los requisitos de defensa para el NPC actual, esperamos
+            print("Esperando requisitos de defensa para el NPC", npcInfo.name)
+        end
+        
+        -- Si el NPC actual fue completado, pasamos al siguiente NPC
+        if not hasQuest and currentIndex < #npcs then
+            currentIndex = currentIndex + 1
+        end
+    end
+end
+coroutine.wrap(tryToGetQuest)()
