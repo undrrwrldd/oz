@@ -1,5 +1,4 @@
 print("STATS")
-print("Garriva v1.0")
 
 local hasQuest = false
 local playerDisponible = true
